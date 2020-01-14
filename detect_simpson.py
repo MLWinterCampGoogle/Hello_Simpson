@@ -5,12 +5,12 @@ Created on Mon Jan 13 11:59:45 2020
 @author: wangyi66
 """
 
-import keras
 import tensorflow as tf
-from keras.preprocessing.image import ImageDataGenerator
+import tensorflow.keras
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from data_loader import MattingImageGenerator
-from keras.applications import vgg16
-from keras.layers import Conv2D
+from tensorflow.keras.applications import vgg16
+from tensorflow.keras.layers import Conv2D
 
 
 # train_datagen = ImageDataGenerator(

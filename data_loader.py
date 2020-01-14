@@ -1,6 +1,6 @@
 
-
-from keras.utils import to_categorical
+import tensorflow as tf
+from tensorflow.keras.utils import to_categorical
 
 MAT_LIST_TRAIN = './'
 MAT_LIST_TEST = './'
