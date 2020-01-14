@@ -54,7 +54,7 @@ This opens up the possibility to do a lot of interesting tasks like photo-enhanc
 Install the [tensorflow_examples](https://github.com/tensorflow/examples) package that enables importing of the generator and the discriminator.
 """
 
-!pip install git+https://github.com/tensorflow/examples.git
+#!pip install git+https://github.com/tensorflow/examples.git
 
 # Commented out IPython magic to ensure Python compatibility.
 try:
