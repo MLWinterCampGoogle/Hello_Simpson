@@ -1,11 +1,11 @@
 
 import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical, Sequence
 
 MAT_LIST_TRAIN = './'
 MAT_LIST_TEST = './'
 
-class MattingImageGenerator(keras.utils.Sequence):
+class MattingImageGenerator(Sequence):
 
     def __init__(self, datamode, batch_size, image_dir ,image_size=(224, 224), shuffle = True):
 
