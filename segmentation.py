@@ -235,8 +235,6 @@ def get_dataset():
   path_ds['test']['image']= tf.data.Dataset.from_tensor_slices(test_img_path)
   path_ds['test']['matting']= tf.data.Dataset.from_tensor_slices(test_mat_path)
 
-  # train = image_label_ds['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  # test = image_label_ds['test'].map(load_image_test)
 
   train_img = path_ds['train']['image'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   train_mat = path_ds['train']['matting'].map(load_mat_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)

@@ -38,9 +38,6 @@ def display(display_list, output_path):
     plt.axis('off')
   plt.savefig(output_path)
 
-# for image, mask in train.take(1):
-#   sample_image, sample_mask = image, mask
-# display([sample_image, sample_mask])
 
 def decode(image):
   img_tensor = tf.image.decode_image(image)
@@ -62,13 +59,11 @@ def show_predictions(model, sample_image, dataset=None, num=1, epoch=0):
       pred_mask = model.predict(image)
       display([image[0], mask[0], create_mask(pred_mask)])
   else:
-    # display([sample_image, sample_mask,
-    #          create_mask(model.predict(sample_image[tf.newaxis, ...]))])
+
     prediction = model.predict(sample_image[tf.newaxis, ...])
-    # print('prediction.shape', prediction.shape)
-    # print('tf.shape(prediction)', tf.shape(prediction))
+
     output_tensor = create_mask(model.predict(sample_image[tf.newaxis, ...]))
-    # print('output_tensor.shape:', output_tensor.shape)
+
   return output_tensor
 
 def load_img(img_path):
@@ -82,77 +77,7 @@ def from_img_to_mask(model, img):
 
   return output_mask
 
-# out_sample_mask = tf.keras.preprocessing.image.array_to_img(sample_mask)
-# out_sample_mask.save('Mattingl.png')
-
-"""## Define the model
-The model being used here is a modified U-Net. A U-Net consists of an encoder (downsampler) and decoder (upsampler). In-order to learn robust features, and reduce the number of trainable parameters, a pretrained model can be used as the encoder. Thus, the encoder for this task will be a pretrained MobileNetV2 model, whose intermediate outputs will be used, and the decoder will be the upsample block already implemented in TensorFlow Examples in the [Pix2pix tutorial](https://github.com/tensorflow/examples/blob/master/tensorflow_examples/models/pix2pix/pix2pix.py). 
-
-The reason to output three channels is because there are three possible labels for each pixel. Think of this as multi-classification where each pixel is being classified into three classes.
-# """
-
 OUTPUT_CHANNELS = 2
-
-"""As mentioned, the encoder will be a pretrained MobileNetV2 model which is prepared and ready to use in [tf.keras.applications](https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/applications). The encoder consists of specific outputs from intermediate layers in the model. Note that the encoder will not be trained during the training process."""
-
-# base_model = tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False)
-
-# # Use the activations of these layers
-# layer_names = [
-#     'block_1_expand_relu',   # 64x64
-#     'block_3_expand_relu',   # 32x32
-#     'block_6_expand_relu',   # 16x16
-#     'block_13_expand_relu',  # 8x8
-#     'block_16_project',      # 4x4
-# ]
-# layers = [base_model.get_layer(name).output for name in layer_names]
-
-# # Create the feature extraction model
-# down_stack = tf.keras.Model(inputs=base_model.input, outputs=layers)
-
-# down_stack.trainable = True
-
-# """The decoder/upsampler is simply a series of upsample blocks implemented in TensorFlow examples."""
-
-# up_stack = [
-#     pix2pix.upsample(512, 3),  # 4x4 -> 8x8
-#     pix2pix.upsample(256, 3),  # 8x8 -> 16x16
-#     pix2pix.upsample(IMG_SIZE, 3),  # 16x16 -> 32x32
-#     pix2pix.upsample(64, 3),   # 32x32 -> 64x64
-# ]
-
-# def unet_model(output_channels):
-
-#   # This is the last layer of the model
-#   last = tf.keras.layers.Conv2DTranspose(
-#       output_channels, 3, strides=2,
-#       padding='same', activation='softmax')  #64x64 -> IMG_SIZExIMG_SIZE
-
-#   inputs = tf.keras.layers.Input(shape=[IMG_SIZE, IMG_SIZE, 3])
-#   x = inputs
-
-#   # Downsampling through the model
-#   skips = down_stack(x)
-#   x = skips[-1]
-#   skips = reversed(skips[:-1])
-
-#   # Upsampling and establishing the skip connections
-#   for up, skip in zip(up_stack, skips):
-#     x = up(x)
-#     concat = tf.keras.layers.Concatenate()
-#     x = concat([x, skip])
-
-#   x = last(x)
-
-#   return tf.keras.Model(inputs=inputs, outputs=x)
-
-# """## Train the model
-# Now, all that is left to do is to compile and train the model. The loss being used here is losses.sparse_categorical_crossentropy. The reason to use this loss function is because the network is trying to assign each pixel a label, just like multi-class prediction. In the true segmentation mask, each pixel has either a {0,1,2}. The network here is outputting three channels. Essentially, each channel is trying to learn to predict a class, and losses.sparse_categorical_crossentropy is the recommended loss for such a scenario. Using the output of the network, the label assigned to the pixel is the channel with the highest value. This is what the create_mask function is doing.
-# """
-
-# def load_test():
-#   with open('.train_index.txt', 'r') as file_read:
-#     file_read.
 def get_dataset():
   with open('file_names.txt', 'r') as image_paths:
     all_image_paths = image_paths.readlines()
@@ -209,23 +134,6 @@ def get_dataset():
   path_ds['test']['image']= tf.data.Dataset.from_tensor_slices(test_img_path)
   path_ds['test']['matting']= tf.data.Dataset.from_tensor_slices(test_mat_path)
 
-  # train = image_label_ds['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  # test = image_label_ds['test'].map(load_image_test)
-
-  # train_img = path_ds['train']['image'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  # train_mat = path_ds['train']['matting'].map(load_mat_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  # test_img = path_ds['test']['image'].map(load_image_test)
-  # test_mat = path_ds['test']['matting'].map(load_mat_test)
-
-
-  # train_image_label_ds = tf.data.Dataset.zip((train_img, train_mat))
-  # test_image_label_ds = tf.data.Dataset.zip((test_img, test_mat))
-  # print(test_image_label_ds)
-
-
-  # train_dataset = train_image_label_ds.take(STEPS_PER_EPOCH).cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
-  # train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-  # test_dataset = test_image_label_ds.take(VALIDATION_STEPS).batch(BATCH_SIZE)
 
   return path_ds
 
@@ -237,19 +145,10 @@ def main():
   model.compile(optimizer='adam', loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-  # checkpoint = True
-  # if checkpoint:
-  # 	model.load_weights(os.path.join(snapshots_dir, snapshots_file))
-  # else:
-  # 	model.compile(optimizer='adam', loss='sparse_categorical_crossentropy',
-  #               metrics=['accuracy'])
-
   """Have a quick look at the resulting model architecture:"""
 
   tf.keras.utils.plot_model(model, show_shapes=True)
 
-  # datasets = get_dataset()
-  # test_ds_image = datasets['test']['image']
 
   with open('./file_names.txt', 'r') as image_paths:
     all_image_paths = image_paths.readlines()
@@ -305,37 +204,6 @@ def main():
 
     cv2.imwrite(predict_whole_path, img_BGRA_predict)
 
-
-
-
-
-  # EPOCHS = 50
-  # VAL_SUBSPLITS = 5
-
-
-  # model_history = model.fit(train_dataset, epochs=EPOCHS,
-  #                           steps_per_epoch=STEPS_PER_EPOCH,
-  #                           # validation_steps=VALIDATION_STEPS,
-  #                           # validation_data=test_dataset,
-  #                           callbacks=[DisplayCallback(), saver_callback])
-
-
-  # loss = model_history.history['loss']
-  # # val_loss = model_history.history['val_loss']
-
-  # epochs = range(EPOCHS)
-
-  # plt.figure()
-  # plt.plot(epochs, loss, 'r', label='Training loss')
-  # # plt.plot(epochs, val_loss, 'bo', label='Validation loss')
-  # plt.title('Training and Validation Loss')
-  # plt.xlabel('Epoch')
-  # plt.ylabel('Loss Value')
-  # plt.ylim([0, 1])
-  # plt.legend()
-  # plt.savefig('board.jpg')
-
-  # """## Make predictions
 
 if __name__ == '__main__':
 
