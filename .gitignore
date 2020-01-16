@@ -1,7 +1,5 @@
-data_train*
 *.pyc
 __pycache__/
-*ipynb
 *.h5
 segmentation/clip_img/
 *.txt
