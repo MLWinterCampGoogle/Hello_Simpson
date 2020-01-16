@@ -81,6 +81,7 @@ import keras
 from tensorflow_examples.models.pix2pix import pix2pix
 from keras.preprocessing.image import load_img
 from keras.callbacks import ModelCheckpoint
+from optional_model import vgg_model
 import tensorflow_datasets as tfds
 tfds.disable_progress_bar()
 
@@ -99,16 +100,14 @@ The dataset is already included in TensorFlow datasets, all that is needed to do
 """The following code performs a simple augmentation of flipping an image. In addition,  image is normalized to [0,1]. Finally, as mentioned above the pixels in the segmentation mask are labeled either {1, 2, 3}. For the sake of convenience, let's subtract 1 from the segmentation mask, resulting in labels that are : {0, 1, 2}."""
 
 COUNT = 0
-IMG_SIZE = 128
-BATCH_SIZE = 64
-BUFFER_SIZE = 1000
+IMG_SIZE = 224
 
 def normalize(input_image, image = True):
   if image:
     input_image = tf.cast(input_image, tf.float32) / 255.0
   else:
     input_image -= 1
-    input_image = tf.cast(input_image, tf.float32) / 255.0
+    input_image = tf.cast(input_image, tf.float32) / 127.5
     # input_image -= 1
   return input_image
 
@@ -134,8 +133,7 @@ def load_mat_train(datapoint, image = True):
     input_image = tf.image.flip_left_right(input_image)
 
   input_image = normalize(input_image[:,:,3], False)
-
-  input_image = tf.reshape(input_image, [IMG_SIZE, IMG_SIZE, 1])
+  # input_image = tf.reshape(input_image, [IMG_SIZE, IMG_SIZE, 3])
 
   return input_image
 
@@ -164,96 +162,95 @@ def load_mat_test(datapoint, image = True):
 
 """The dataset already contains the required splits of test and train and so let's continue to use the same split."""
 
-def get_dataset():
-  with open('file_names.txt', 'r') as image_paths:
-    all_image_paths = image_paths.readlines()
-    all_image_paths = list(map(lambda x: x.strip('\n'), all_image_paths))
+with open('file_names.txt', 'r') as image_paths:
+  all_image_paths = image_paths.readlines()
+  all_image_paths = list(map(lambda x: x.strip('\n'), all_image_paths))
 
 
-  with open('matting_names.txt', 'r') as matting_paths:
-    all_matting_paths = matting_paths.readlines()
-    all_matting_paths = list(map(lambda x: x.strip('\n'), all_matting_paths))
+with open('matting_names.txt', 'r') as matting_paths:
+  all_matting_paths = matting_paths.readlines()
+  all_matting_paths = list(map(lambda x: x.strip('\n'), all_matting_paths))
 
 # TRAIN_LENGTH = info.splits['train'].num_examples
-  DATA_LENGTH = len(all_image_paths)
+DATA_LENGTH = len(all_image_paths)
+BATCH_SIZE = 64
+BUFFER_SIZE = 1000
+
+test_dataset_size = int(np.int(np.floor(len(all_image_paths) / 8)))
+train_index = list(range(DATA_LENGTH))
+
+for i in range(test_dataset_size):
+  train_index.pop(random.randrange(len(train_index)))
+
+# with open('./train_index.txt', 'r') as file_r:
+#   train_index = file_r.read().splitlines()
+
+# train_index = list(map(lambda x: int(x), train_index))
+# for ti in train_index:
+#   print(ti)
+#   print(type(ti))
+#   break
+
+path_ds = {}
+
+train_img_path = []
+train_mat_path = []
+
+test_img_path = []
+test_mat_path = []
 
 
-  test_dataset_size = int(np.int(np.floor(len(all_image_paths) / 8)))
-  train_index = list(range(DATA_LENGTH))
+for i, path in enumerate(all_image_paths):
+  try:
+    image = load_img(all_image_paths[i])
 
-  for i in range(test_dataset_size):
-    train_index.pop(random.randrange(len(train_index)))
+    if i in train_index:
+      train_img_path.append(all_image_paths[i])
+      train_mat_path.append(all_matting_paths[i])
+    else:
+      test_img_path.append(all_image_paths[i])
+      test_mat_path.append(all_matting_paths[i])
+  except:
+    pass
 
-  # with open('./train_index.txt', 'r') as file_r:
-  #   train_index = file_r.read().splitlines()
+print(len(train_img_path))
+print(len(test_img_path))
 
-  # train_index = list(map(lambda x: int(x), train_index))
-  # for ti in train_index:
-  #   print(ti)
-  #   print(type(ti))
-  #   break
+STEPS_PER_EPOCH = len(train_img_path) // BATCH_SIZE + 1
+VALIDATION_STEPS = len(test_img_path) // BATCH_SIZE + 1
 
-  path_ds = {}
+with open('./train_index.txt', 'w+') as file_w:
+  for index in train_index:
+    file_w.write(str(index) + '\n')
 
-  train_img_path = []
-  train_mat_path = []
+path_ds = {}
+path_ds['train'] = {}
+path_ds['test'] = {}
 
-  test_img_path = []
-  test_mat_path = []
+path_ds['train']['image'] = tf.data.Dataset.from_tensor_slices(train_img_path)
+path_ds['train']['matting'] = tf.data.Dataset.from_tensor_slices(train_mat_path)
 
+path_ds['test']['image']= tf.data.Dataset.from_tensor_slices(test_img_path)
+path_ds['test']['matting']= tf.data.Dataset.from_tensor_slices(test_img_path)
 
-  for i, path in enumerate(all_image_paths):
-    try:
-      image = load_img(all_image_paths[i])
+# train = image_label_ds['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+# test = image_label_ds['test'].map(load_image_test)
 
-      if i in train_index:
-        train_img_path.append(all_image_paths[i])
-        train_mat_path.append(all_matting_paths[i])
-      else:
-        test_img_path.append(all_image_paths[i])
-        test_mat_path.append(all_matting_paths[i])
-    except:
-      pass
-
-  print(len(train_img_path))
-  print(len(test_img_path))
-
-  STEPS_PER_EPOCH = len(train_img_path) // BATCH_SIZE + 1
-  VALIDATION_STEPS = len(test_img_path) // BATCH_SIZE + 1
-
-  with open('./train_index.txt', 'w+') as file_w:
-    for index in train_index:
-      file_w.write(str(index) + '\n')
-
-  path_ds = {}
-  path_ds['train'] = {}
-  path_ds['test'] = {}
-
-  path_ds['train']['image'] = tf.data.Dataset.from_tensor_slices(train_img_path)
-  path_ds['train']['matting'] = tf.data.Dataset.from_tensor_slices(train_mat_path)
-
-  path_ds['test']['image']= tf.data.Dataset.from_tensor_slices(test_img_path)
-  path_ds['test']['matting']= tf.data.Dataset.from_tensor_slices(test_mat_path)
-
-  # train = image_label_ds['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  # test = image_label_ds['test'].map(load_image_test)
-
-  train_img = path_ds['train']['image'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  train_mat = path_ds['train']['matting'].map(load_mat_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  test_img = path_ds['test']['image'].map(load_image_test)
-  test_mat = path_ds['test']['matting'].map(load_mat_test)
+train_img = path_ds['train']['image'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_mat = path_ds['train']['matting'].map(load_mat_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_img = path_ds['test']['image'].map(load_image_test)
+test_mat = path_ds['test']['matting'].map(load_mat_test)
 
 
-  train_image_label_ds = tf.data.Dataset.zip((train_img, train_mat))
-  test_image_label_ds = tf.data.Dataset.zip((test_img, test_mat))
-  print(test_image_label_ds)
+train_image_label_ds = tf.data.Dataset.zip((train_img, train_mat))
+test_image_label_ds = tf.data.Dataset.zip((test_img, test_mat))
+print(test_image_label_ds)
 
 
-  train_dataset = train_image_label_ds.take(STEPS_PER_EPOCH).cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
-  train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-  test_dataset = test_image_label_ds.take(VALIDATION_STEPS).batch(BATCH_SIZE)
+train_dataset = train_image_label_ds.take(STEPS_PER_EPOCH).cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
+train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+test_dataset = test_image_label_ds.take(VALIDATION_STEPS).batch(BATCH_SIZE)
 
-  return train_dataset, test_dataset
 
 """Let's take a look at an image example and it's correponding mask from the dataset."""
 
@@ -280,24 +277,21 @@ def resize(image):
 
   return img_final
 
-def check_output():
-
-  sample_image = tf.io.read_file('./clip_img/1803251855/clip_00000000/1803251855-00000274.jpg')
-  sample_image = resize(sample_image)
-  out_sample_image = tf.keras.preprocessing.image.array_to_img(sample_image)
-  out_sample_image.save('Original.jpg')
+sample_image = tf.io.read_file('./clip_img/1803251855/clip_00000000/1803251855-00000274.jpg')
+sample_image = resize(sample_image)
+out_sample_image = tf.keras.preprocessing.image.array_to_img(sample_image)
+out_sample_image.save('Original.jpg')
 
 
-  sample_mask = tf.io.read_file('./matting/1803251855/matting_00000000/1803251855-00000274.png')
+sample_mask = tf.io.read_file('./matting/1803251855/matting_00000000/1803251855-00000274.png')
 
-  sample_mask = resize(sample_mask)
-  # print(tf.shape(sample_mask))
-  # print(tf.shape(sample_mask[3]))
+sample_mask = resize(sample_mask)
+# print(tf.shape(sample_mask))
+# print(tf.shape(sample_mask[3]))
 
-  out_sample_mask = tf.keras.preprocessing.image.array_to_img(sample_mask)
-  out_sample_mask.save('Mattingl.png')
+out_sample_mask = tf.keras.preprocessing.image.array_to_img(sample_mask)
+out_sample_mask.save('Mattingl.png')
 
-  return out_sample_image, out_sample_mask
 
 
 
@@ -309,35 +303,35 @@ The reason to output three channels is because there are three possible labels f
 
 OUTPUT_CHANNELS = 2
 
+"""As mentioned, the encoder will be a pretrained MobileNetV2 model which is prepared and ready to use in [tf.keras.applications](https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/applications). The encoder consists of specific outputs from intermediate layers in the model. Note that the encoder will not be trained during the training process."""
+
+base_model = tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False)
+
+# Use the activations of these layers
+layer_names = [
+    'block_1_expand_relu',   # 64x64
+    'block_3_expand_relu',   # 32x32
+    'block_6_expand_relu',   # 16x16
+    'block_13_expand_relu',  # 8x8
+    'block_16_project',      # 4x4
+]
+layers = [base_model.get_layer(name).output for name in layer_names]
+
+# Create the feature extraction model
+down_stack = tf.keras.Model(inputs=base_model.input, outputs=layers)
+
+down_stack.trainable = False
+
+"""The decoder/upsampler is simply a series of upsample blocks implemented in TensorFlow examples."""
+
+up_stack = [
+    pix2pix.upsample(512, 3),  # 4x4 -> 8x8
+    pix2pix.upsample(256, 3),  # 8x8 -> 16x16
+    pix2pix.upsample(IMG_SIZE, 3),  # 16x16 -> 32x32
+    pix2pix.upsample(64, 3),   # 32x32 -> 64x64
+]
+
 def unet_model(output_channels):
-
-
-  base_model = tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False)
-
-  # Use the activations of these layers
-  layer_names = [
-      'block_1_expand_relu',   # 64x64
-      'block_3_expand_relu',   # 32x32
-      'block_6_expand_relu',   # 16x16
-      'block_13_expand_relu',  # 8x8
-      'block_16_project',      # 4x4
-  ]
-  layers = [base_model.get_layer(name).output for name in layer_names]
-
-  # Create the feature extraction model
-  down_stack = tf.keras.Model(inputs=base_model.input, outputs=layers)
-
-  down_stack.trainable = True
-
-  """The decoder/upsampler is simply a series of upsample blocks implemented in TensorFlow examples."""
-
-  up_stack = [
-      pix2pix.upsample(512, 3),  # 4x4 -> 8x8
-      pix2pix.upsample(256, 3),  # 8x8 -> 16x16
-      pix2pix.upsample(IMG_SIZE, 3),  # 16x16 -> 32x32
-      pix2pix.upsample(64, 3),   # 32x32 -> 64x64
-  ]
-
 
   # This is the last layer of the model
   last = tf.keras.layers.Conv2DTranspose(
@@ -361,15 +355,40 @@ def unet_model(output_channels):
   x = last(x)
 
   return tf.keras.Model(inputs=inputs, outputs=x)
-"""As mentioned, the encoder will be a pretrained MobileNetV2 model which is prepared and ready to use in [tf.keras.applications](https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/applications). The encoder consists of specific outputs from intermediate layers in the model. Note that the encoder will not be trained during the training process."""
-
 
 """## Train the model
 Now, all that is left to do is to compile and train the model. The loss being used here is losses.sparse_categorical_crossentropy. The reason to use this loss function is because the network is trying to assign each pixel a label, just like multi-class prediction. In the true segmentation mask, each pixel has either a {0,1,2}. The network here is outputting three channels. Essentially, each channel is trying to learn to predict a class, and losses.sparse_categorical_crossentropy is the recommended loss for such a scenario. Using the output of the network, the label assigned to the pixel is the channel with the highest value. This is what the create_mask function is doing.
 """
 
+cache = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "cache"))
+snapshots_dir = os.path.join(cache, "snapshots")
+snapshots_file = "Unet{epoch:03d}.h5"
+saver_callback = ModelCheckpoint(os.path.join(snapshots_dir, snapshots_file), period=5)
 
 
+# for layer in model.layers:
+#     print('layer', layer.output_shape)
+
+# checkpoint = False
+# if checkpoint:
+# 	model.load_weights(os.path.join(snapshots_dir, snapshots_file))
+# else:
+# 	model.compile(optimizer='adam', loss='sparse_categorical_crossentropy',
+#               metrics=['accuracy'])
+
+vgg = True
+if vgg:
+	model = vgg_model()
+	model.compile(optimizer='adam', loss='binary_crossentropy',
+          metrics=['accuracy'])
+else:
+	model.compile(optimizer='adam', loss='sparse_categorical_crossentropy',
+          metrics=['accuracy'])	
+
+
+"""Have a quick look at the resulting model architecture:"""
+
+tf.keras.utils.plot_model(model, show_shapes=True)
 
 """Let's try out the model to see what it predicts before training."""
 
@@ -378,85 +397,72 @@ def create_mask(pred_mask):
   pred_mask = pred_mask[..., tf.newaxis]
   return pred_mask[0]
 
-def show_predictions(model, dataset=None, num=1, epoch=0):
-  if dataset:
-    for image, mask in dataset.take(num):
-      pred_mask = model.predict(image)
-      display([image[0], mask[0], create_mask(pred_mask)])
-  else:
-    # display([sample_image, sample_mask,
-    #          create_mask(model.predict(sample_image[tf.newaxis, ...]))])
-    prediction = model.predict(sample_image[tf.newaxis, ...])
-    print('prediction.shape', prediction.shape)
-    print('tf.shape(prediction)', tf.shape(prediction))
-    output_tensor = create_mask(model.predict(sample_image[tf.newaxis, ...]))
-    print('output_tensor.shape:', output_tensor.shape)
-    output_image = tf.keras.preprocessing.image.array_to_img(output_tensor)
+# def show_predictions(dataset=None, num=1, epoch=0):
+#   if dataset:
+#     for image, mask in dataset.take(num):
+#       pred_mask = model.predict(image)
+#       display([image[0], mask[0], create_mask(pred_mask)])
+#   else:
+#     # display([sample_image, sample_mask,
+#     #          create_mask(model.predict(sample_image[tf.newaxis, ...]))])
+#     prediction = model.predict(sample_image, steps=1)
+#     print('prediction.shape', prediction.shape)
+#     print('tf.shape(prediction)', tf.shape(prediction))
+#     output_tensor = create_mask(prediction)
+#     print('output_tensor.shape:', output_tensor.shape)
+#     output_image = tf.keras.preprocessing.image.array_to_img(output_tensor)
 
-    output_image.save('Prediction_{}.jpg'.format(epoch))
+#     output_image.save('Prediction_{}.jpg'.format(epoch))
 
+
+# show_predictions()
 
 """Let's observe how the model improves while it is training. To accomplish this task, a callback function is defined below."""
 
 class DisplayCallback(tf.keras.callbacks.Callback):
-
   def on_epoch_end(self, epoch, logs=None):
     # clear_output(wait=True)
-    show_predictions(epoch = epoch)
+    # show_predictions(epoch = epoch)
 
     print ('\nSample Prediction after epoch {}\n'.format(epoch+1))
 
     # model.evaluate(test_dataset)
 
-def main():
-
-  EPOCHS = 50
-  VAL_SUBSPLITS = 5
-
-  train_dataset, test_dataset = get_dataset()
-
-  model = unet_model(OUTPUT_CHANNELS)
-
-  for layer in model.layers:
-      print('layer', layer.output_shape)
-
-  model.compile(optimizer='adam', loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
-  
-  show_predictions(model)
+EPOCHS = 50
+VAL_SUBSPLITS = 5
 
 
-  """Have a quick look at the resulting model architecture:"""
-
-  tf.keras.utils.plot_model(model, show_shapes=True) 
-
-  model_history = model.fit(train_dataset, epochs=EPOCHS,
-                            steps_per_epoch=STEPS_PER_EPOCH,
-                            # validation_steps=VALIDATION_STEPS,
-                            # validation_data=test_dataset,
-                            callbacks=[DisplayCallback(), saver_callback])
+model_history = model.fit(train_dataset, epochs=EPOCHS,
+                          steps_per_epoch=STEPS_PER_EPOCH,
+                          # validation_steps=VALIDATION_STEPS,
+                          # validation_data=test_dataset,
+                          callbacks=[DisplayCallback(), saver_callback])
 
 
-  loss = model_history.history['loss']
-  # val_loss = model_history.history['val_loss']
+loss = model_history.history['loss']
+# val_loss = model_history.history['val_loss']
 
-  epochs = range(EPOCHS)
+epochs = range(EPOCHS)
 
-  plt.figure()
-  plt.plot(epochs, loss, 'r', label='Training loss')
-  # plt.plot(epochs, val_loss, 'bo', label='Validation loss')
-  plt.title('Training and Validation Loss')
-  plt.xlabel('Epoch')
-  plt.ylabel('Loss Value')
-  plt.ylim([0, 1])
-  plt.legend()
-  plt.savefig('board.jpg')
+plt.figure()
+plt.plot(epochs, loss, 'r', label='Training loss')
+# plt.plot(epochs, val_loss, 'bo', label='Validation loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss Value')
+plt.ylim([0, 1])
+plt.legend()
+plt.savefig('board.jpg')
 
-  """## Make predictions
+"""## Make predictions
 
-  Let's make some predictions. In the interest of saving time, the number of epochs was kept small, but you may set this higher to achieve more accurate results.
-  """
+Let's make some predictions. In the interest of saving time, the number of epochs was kept small, but you may set this higher to achieve more accurate results.
+"""
 
-if __name__ == '__main__':
+show_predictions(test_dataset, 3)
 
-    main()
+"""## Next steps
+Now that you have an understanding of what image segmentation is and how it works, you can try this tutorial out with different intermediate layer outputs, or even different pretrained model. You may also challenge yourself by trying out the [Carvana](https://www.kaggle.com/c/carvana-image-masking-challenge/overview) image masking challenge hosted on Kaggle.
+
+You may also want to see the [Tensorflow Object Detection API](https://github.com/tensorflow/models/tree/master/research/object_detection) for another model you can retrain on your own data.
+"""
