@@ -3,7 +3,6 @@ __pycache__/
 *.h5
 segmentation/clip_img/
 *.txt
-*.png
 segmentation/result/
 cyclegan/data/*
 cyclegan/ckp/*
