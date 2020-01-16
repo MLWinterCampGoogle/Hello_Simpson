@@ -1,12 +1,12 @@
 # Hello Simpson!
 
-<img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/image/theme.png" width="100" />
+<img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/raw/master/image/theme.png" width="400" />
 
 ## Introduction
 
 The image to image translation task: customized photo filter to transfer people to Simpson.
 
-<img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/image/human.png" height="100"/> <img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/image/simpson.png" height="100"/>
+<img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/raw/master/image/human.png" height="200"/> <img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/raw/master/image/simpson.png" height="200"/>
 
 ## Models
 
@@ -18,7 +18,7 @@ The image to image translation task: customized photo filter to transfer people 
 
 ## Demo
 
-<img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/image/demo.jpg" height="200"/>
+<img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/raw/master/image/demo.jpg" height="300"/>
 
 ## Reference
 
