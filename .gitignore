@@ -2,3 +2,16 @@
 data_train*
 
 *.pyc
+
+__pycache__*
+
+*ipynb
+
+*.h5
+
+clip_img
+
+*.txt
+
+*.png
+
