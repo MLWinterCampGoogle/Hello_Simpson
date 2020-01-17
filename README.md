@@ -9,6 +9,7 @@ The image to image translation task: customized photo filter to transfer people 
 <img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/raw/master/image/human.png" height="200"/> <img src="https://github.com/MLWinterCampGoogle/Hello_Simpson/raw/master/image/simpson.png" height="200"/>
 
 ## Models
+- Unet (based on MobileNetV2)
 
 - pix2pix
 
